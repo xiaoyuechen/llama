@@ -29,6 +29,7 @@ class ModelArgs:
 
     max_batch_size: int = 32
     max_seq_len: int = 2048
+    cache_len: int = 128
 
 
 class RMSNorm(torch.nn.Module):
@@ -382,6 +383,7 @@ class TransformerBlock(nn.Module):
         self.layer_id = layer_id
         self.attention_norm = RMSNorm(args.dim, eps=args.norm_eps)
         self.ffn_norm = RMSNorm(args.dim, eps=args.norm_eps)
+        self.cache_len = args.cache_len
 
     def forward(
         self,

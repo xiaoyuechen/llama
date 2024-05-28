@@ -16,6 +16,7 @@ def main(
     max_seq_len: int = 512,
     max_batch_size: int = 8,
     max_gen_len: Optional[int] = None,
+    cache_len: int = 128,
 ):
     """
     Entry point of the program for generating text using a pretrained model.
@@ -37,6 +38,7 @@ def main(
         tokenizer_path=tokenizer_path,
         max_seq_len=max_seq_len,
         max_batch_size=max_batch_size,
+        cache_len=cache_len,
     )
 
     dialogs: List[Dialog] = [
