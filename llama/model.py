@@ -2,6 +2,7 @@
 # This software may be used and distributed according to the terms of the Llama 2 Community License Agreement.
 
 import math
+import random
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
@@ -237,7 +238,7 @@ class Attention(nn.Module):
         self.cache_k = torch.zeros(
             (
                 args.max_batch_size,
-                args.max_seq_len,
+                args.cache_len,
                 self.n_local_kv_heads,
                 self.head_dim,
             )
@@ -245,11 +246,13 @@ class Attention(nn.Module):
         self.cache_v = torch.zeros(
             (
                 args.max_batch_size,
-                args.max_seq_len,
+                args.cache_len,
                 self.n_local_kv_heads,
                 self.head_dim,
             )
         ).cuda()
+
+        self.sw_counter = 0
 
     def forward(
         self,
@@ -283,8 +286,25 @@ class Attention(nn.Module):
         self.cache_k = self.cache_k.to(xq)
         self.cache_v = self.cache_v.to(xq)
 
-        self.cache_k[:bsz, start_pos : start_pos + seqlen] = xk
-        self.cache_v[:bsz, start_pos : start_pos + seqlen] = xv
+        free_cache_len = max(self.cache_k.size(dim=1) - start_pos, 0)
+        fit_seq_len = min(seqlen, free_cache_len)
+
+        self.cache_k[:bsz, start_pos : start_pos + fit_seq_len] = xk[:, :fit_seq_len]
+        self.cache_v[:bsz, start_pos : start_pos + fit_seq_len] = xv[:, :fit_seq_len]
+
+        for i in range(fit_seq_len, seqlen):
+            # do nothing
+            # pass
+
+            # sliding window
+            # self.cache_k[:bsz, self.sw_counter + 1] = xk[:, i]
+            # self.cache_v[:bsz, self.sw_counter + 1] = xv[:, i]
+            # self.sw_counter = (self.sw_counter + 1) % (self.cache_k.size(dim=1) - 1)
+
+            # random replacement
+            replace = random.randrange(1, self.cache_k.size(dim=1))
+            self.cache_k[:bsz, replace] = xk[:, i]
+            self.cache_v[:bsz, replace] = xv[:, i]
 
         keys = self.cache_k[:bsz, : start_pos + seqlen]
         values = self.cache_v[:bsz, : start_pos + seqlen]
