@@ -56,6 +56,7 @@ class Llama:
         max_seq_len: int,
         max_batch_size: int,
         cache_len: int,
+        cache_mode: str,
         model_parallel_size: Optional[int] = None,
         seed: int = 1,
     ) -> "Llama":
@@ -113,6 +114,7 @@ class Llama:
             max_seq_len=max_seq_len,
             max_batch_size=max_batch_size,
             cache_len=cache_len,
+            cache_mode=cache_mode,
             **params,
         )
         tokenizer = Tokenizer(model_path=tokenizer_path)

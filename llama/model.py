@@ -31,6 +31,7 @@ class ModelArgs:
     max_batch_size: int = 32
     max_seq_len: int = 2048
     cache_len: int = 128
+    cache_mode: str = "sw"
 
 
 class RMSNorm(torch.nn.Module):
@@ -253,6 +254,8 @@ class Attention(nn.Module):
         ).cuda()
 
         self.sw_counter = 0
+        self.cache_mode = args.cache_mode
+        print(f"mode {self.cache_mode} cache len {args.cache_len}")
 
     def forward(
         self,
@@ -293,18 +296,19 @@ class Attention(nn.Module):
         self.cache_v[:bsz, start_pos : start_pos + fit_seq_len] = xv[:, :fit_seq_len]
 
         for i in range(fit_seq_len, seqlen):
-            # do nothing
-            # pass
-
-            # sliding window
-            # self.cache_k[:bsz, self.sw_counter + 1] = xk[:, i]
-            # self.cache_v[:bsz, self.sw_counter + 1] = xv[:, i]
-            # self.sw_counter = (self.sw_counter + 1) % (self.cache_k.size(dim=1) - 1)
-
-            # random replacement
-            replace = random.randrange(1, self.cache_k.size(dim=1))
-            self.cache_k[:bsz, replace] = xk[:, i]
-            self.cache_v[:bsz, replace] = xv[:, i]
+            if self.cache_mode == "fill":
+                # do nothing
+                pass
+            elif self.cache_mode == "sw":
+                # sliding window
+                self.cache_k[:bsz, self.sw_counter + 1] = xk[:, i]
+                self.cache_v[:bsz, self.sw_counter + 1] = xv[:, i]
+                self.sw_counter = (self.sw_counter + 1) % (self.cache_k.size(dim=1) - 1)
+            elif self.cache_mode == "rand":
+                # random replacement
+                replace = random.randrange(1, self.cache_k.size(dim=1))
+                self.cache_k[:bsz, replace] = xk[:, i]
+                self.cache_v[:bsz, replace] = xv[:, i]
 
         keys = self.cache_k[:bsz, : start_pos + seqlen]
         values = self.cache_v[:bsz, : start_pos + seqlen]
